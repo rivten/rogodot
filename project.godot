@@ -1,0 +1,58 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=4
+
+_global_script_classes=[ {
+"base": "Reference",
+"class": "Ai",
+"language": "GDScript",
+"path": "res://code/ai.gd"
+}, {
+"base": "Reference",
+"class": "Entity",
+"language": "GDScript",
+"path": "res://code/entity.gd"
+}, {
+"base": "Reference",
+"class": "FighterState",
+"language": "GDScript",
+"path": "res://code/fighter.gd"
+}, {
+"base": "Node",
+"class": "Game",
+"language": "GDScript",
+"path": "res://code/game.gd"
+}, {
+"base": "Node2D",
+"class": "GameMap",
+"language": "GDScript",
+"path": "res://code/game_map.gd"
+}, {
+"base": "Reference",
+"class": "Tile",
+"language": "GDScript",
+"path": "res://code/tile.gd"
+} ]
+_global_script_class_icons={
+"Ai": "",
+"Entity": "",
+"FighterState": "",
+"Game": "",
+"GameMap": "",
+"Tile": ""
+}
+
+[application]
+
+config/name="rogodot"
+run/main_scene="res://data/scenes/game.tscn"
+
+[rendering]
+
+environment/default_environment="res://data/environment/default_env.tres"
