@@ -35,6 +35,11 @@ _global_script_classes=[ {
 "path": "res://code/game_map.gd"
 }, {
 "base": "Reference",
+"class": "LogMessage",
+"language": "GDScript",
+"path": "res://code/log_message.gd"
+}, {
+"base": "Reference",
 "class": "Tile",
 "language": "GDScript",
 "path": "res://code/tile.gd"
@@ -45,6 +50,7 @@ _global_script_class_icons={
 "FighterState": "",
 "Game": "",
 "GameMap": "",
+"LogMessage": "",
 "Tile": ""
 }
 

@@ -28,9 +28,16 @@ static func attack(_attacker: FighterState, _target: FighterState) -> Array:
 
 	var damage = _attacker.power - _target.defense
 	if damage > 0:
-		commands.push_back({'message': _attacker.get_owner.call_func().name + ' attacks ' + _target.get_owner.call_func().name +  ' for ' +  str(damage) + ' hit point(s)'})
+		var msg = LogMessage.new()
+		msg.text = _attacker.get_owner.call_func().name + ' attacks ' + _target.get_owner.call_func().name +  ' for ' +  str(damage) + ' hit point(s)'
+		msg.color = Color.white
+
+		commands.push_back({'message': msg})
 		commands = commands + take_damage(_target, damage)
 	else:
-		commands.push_back({'message': _attacker.get_owner.call_func().name + ' attacks ' + _target.get_owner.call_func().name + ' but does no damage.'})
+		var msg = LogMessage.new()
+		msg.text = _attacker.get_owner.call_func().name + ' attacks ' + _target.get_owner.call_func().name + ' but does no damage.'
+		msg.color = Color.white
+		commands.push_back({'message': msg})
 	return commands
 
