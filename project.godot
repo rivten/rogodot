@@ -35,6 +35,21 @@ _global_script_classes=[ {
 "path": "res://code/game_map.gd"
 }, {
 "base": "Reference",
+"class": "Inventory",
+"language": "GDScript",
+"path": "res://code/inventory.gd"
+}, {
+"base": "Reference",
+"class": "Item",
+"language": "GDScript",
+"path": "res://code/item.gd"
+}, {
+"base": "Reference",
+"class": "ItemFunctions",
+"language": "GDScript",
+"path": "res://code/item_functions.gd"
+}, {
+"base": "Reference",
 "class": "LogMessage",
 "language": "GDScript",
 "path": "res://code/log_message.gd"
@@ -50,6 +65,9 @@ _global_script_class_icons={
 "FighterState": "",
 "Game": "",
 "GameMap": "",
+"Inventory": "",
+"Item": "",
+"ItemFunctions": "",
 "LogMessage": "",
 "Tile": ""
 }

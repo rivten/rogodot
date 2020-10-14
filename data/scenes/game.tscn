@@ -78,3 +78,33 @@ __meta__ = {
 __meta__ = {
 "_edit_use_anchors_": false
 }
+
+[node name="inventory_container" type="CenterContainer" parent="."]
+visible = false
+anchor_right = 1.0
+anchor_bottom = 1.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="background" type="ColorRect" parent="inventory_container"]
+margin_left = 262.0
+margin_top = 50.0
+margin_right = 762.0
+margin_bottom = 550.0
+rect_min_size = Vector2( 500, 500 )
+color = Color( 0, 0, 0, 1 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="items" type="VBoxContainer" parent="inventory_container/background"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 10.0
+margin_top = 10.0
+margin_right = -10.0
+margin_bottom = -10.0
+__meta__ = {
+"_edit_use_anchors_": false
+}

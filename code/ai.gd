@@ -19,7 +19,7 @@ static func basic_monster_take_turn(_entity: Entity, _target: Entity, _game_map:
 		else:
 			assert(_target.fighter)
 			# TODO(rivten): do we really need this check ?
-			if _target.fighter.hp > 0:
+			if _target.fighter.hp >= 0:
 				commands = commands + FighterState.attack(_entity.fighter, _target.fighter)
 
 	return commands

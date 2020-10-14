@@ -41,3 +41,7 @@ static func attack(_attacker: FighterState, _target: FighterState) -> Array:
 		commands.push_back({'message': msg})
 	return commands
 
+static func heal(_fighter: FighterState, _amount: int) -> void:
+	_fighter.hp += _amount
+	if _fighter.hp > _fighter.max_hp:
+		_fighter.hp = _fighter.max_hp
