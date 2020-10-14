@@ -25,14 +25,24 @@ static func add_item(_inventory: Inventory, _item_weak_ref: WeakRef) -> Array:
 	return commands
 
 static func use_item(_inventory: Inventory, _item_index: int, _d: Dictionary) -> Array:
-		var item_entity = _inventory.items[_item_index].get_ref()
-		var commands = item_entity.item.use(_d)
+	var item_entity = _inventory.items[_item_index].get_ref()
+	var commands = []
 
-		for command in commands:
-			if command.has('consumed') and command.consumed:
-				remove_item(_inventory, _item_index)
+	if not item_entity.item.use_function:
+		var msg = LogMessage.new()
+		msg.text = "The " + item_entity.name + " cannot be used."
+		msg.color = Color.yellow
+	else:
+		if item_entity.item.targeting and (not _d.has('target_pos')):
+			commands.push_back({'targeting_item': item_entity, 'targeting_item_index': _item_index})
+		else:
+			commands = item_entity.item.use(_d)
 
-		return commands
+			for command in commands:
+				if command.has('consumed') and command.consumed:
+					remove_item(_inventory, _item_index)
+
+	return commands
 
 static func remove_item(_inventory: Inventory, _item_index: int) -> void:
 	_inventory.items.remove(_item_index)

@@ -2,7 +2,7 @@ class_name Game
 
 extends Node
 
-enum GameState { PLAYER_TURN, ENEMY_TURN, PLAYER_DEAD, SHOW_INVENTORY, DROP_INVENTORY, }
+enum GameState { PLAYER_TURN, ENEMY_TURN, PLAYER_DEAD, SHOW_INVENTORY, DROP_INVENTORY, TARGETING, }
 
 # NOTE(rivten): Tileset data
 export(Vector2) var character_tileset_pos = Vector2(0, 13)
@@ -10,13 +10,14 @@ export(Vector2) var dead_character_tileset_pos = Vector2(5, 13)
 export(Vector2) var npc_tileset_pos = Vector2(4, 13)
 export(Vector2) var troll_tileset_pos = Vector2(5, 13)
 export(Vector2) var potion_tileset_pos = Vector2(4, 16)
+export(Vector2) var scroll_tileset_pos = Vector2(8, 17)
 export(int) var tile_size_in_pixels = 16
 
 # NOTE(rivten): Entity generation data
 export(int) var max_monsters_per_room = 5
 export(int) var max_items_per_room = 2
 
-# NOTE(rivte): UI data
+# NOTE(rivten): UI data
 export(int) var max_log_text_count = 4
 export(int) var max_hover_name_count = 3
 export(Vector2) var hover_margin_name = Vector2(5, 5)
@@ -35,7 +36,7 @@ export(Vector2) var hover_rect_mouse_offset = Vector2(10, 10)
 
 var player: Entity
 var game_state: int
-var prev_game_state_before_inventory: int
+var prev_game_state: int
 
 var entities: Array
 # TODO(rivten): so this is a hack for now.
@@ -53,6 +54,9 @@ var entities_in_inventory: Array
 var entities_to_sprite: Dictionary
 
 var tilemap = preload("res://data/bitmaps/roguelike_tileset.png")
+
+# NOTE(rivten): Current item when chosing a target when game_state is TARGETING
+var targeting_item_index: int
 
 # NOTE(rivten): only called when the children are ready...
 func _ready() -> void:
@@ -97,21 +101,51 @@ func _ready() -> void:
 		name_label.visible = false
 		$hover_names.add_child(name_label)
 
-func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed:
-		do_input_key(event.scancode)
+func get_action_key(scancode: int) -> Dictionary:
+	if game_state == GameState.PLAYER_TURN:
+		return get_action_player_turn(scancode)
+	elif game_state == GameState.PLAYER_DEAD:
+		return get_action_player_dead(scancode)
+	elif game_state == GameState.SHOW_INVENTORY or game_state == GameState.DROP_INVENTORY:
+		return get_action_inventory(scancode)
+	elif game_state == GameState.TARGETING:
+		return get_action_targeting(scancode)
+
+	return {}
+
+func get_action_mouse(button: int) -> Dictionary:
+	var map_pos = get_mouse_in_map_space()
+	if button == BUTTON_LEFT:
+		return {'left_click': map_pos}
+	elif button == BUTTON_RIGHT:
+		return {'right_click': map_pos}
+	return {}
 
 func _input(event: InputEvent) -> void:
-	# TODO(rivten): why doesn't this work in _unhandled_input
+	var action = {}
+	if event is InputEventKey and event.pressed:
+		action = get_action_key(event.scancode)
+	if event is InputEventMouseButton and event.pressed:
+		action = get_action_mouse(event.button_mask)
+
 	if event is InputEventMouseMotion:
 		update_mouse_hover_ui()
 
+	if not action.empty():
+		process_action(action)
 
-func update_mouse_hover_ui() -> void:
+
+func get_mouse_in_map_space() -> Vector2:
 	var mouse_pos = $viewport_container/viewport.get_mouse_position()
 	var map_pos = (1.0 / tile_size_in_pixels) * $viewport_container/viewport.get_canvas_transform().xform_inv(mouse_pos)
 	var tile_x = int(map_pos.x)
 	var tile_y = int(map_pos.y)
+	return Vector2(tile_x, tile_y)
+
+func update_mouse_hover_ui() -> void:
+	var map_pos = get_mouse_in_map_space()
+	var tile_x = map_pos.x
+	var tile_y = map_pos.y
 
 	# TODO(rivten): At first this was only done in the _input function
 	# But there was issues with switching hover between two
@@ -146,6 +180,8 @@ func update_mouse_hover_ui() -> void:
 				label.visible = false
 			label_index += 1
 
+	# TODO(rivten): recomputing the mouse pos... meh...
+	var mouse_pos = $viewport_container/viewport.get_mouse_position()
 	$hover_names_background.rect_position = mouse_pos + hover_rect_mouse_offset
 	$hover_names.rect_position = mouse_pos + hover_rect_mouse_offset + hover_margin_name
 	$hover_names_background.rect_size = $hover_names.rect_size + 2.0 * hover_margin_name
@@ -216,14 +252,12 @@ static func get_action_inventory(scancode: int) -> Dictionary:
 
 	return {}
 
-func do_input_key(scancode: int) -> void:
-	var action = {}
-	if game_state == GameState.PLAYER_TURN:
-		action = get_action_player_turn(scancode)
-	elif game_state == GameState.PLAYER_DEAD:
-		action = get_action_player_dead(scancode)
-	elif game_state == GameState.SHOW_INVENTORY or game_state == GameState.DROP_INVENTORY:
-		action = get_action_inventory(scancode)
+static func get_action_targeting(scancode: int) -> Dictionary:
+	if scancode == KEY_ESCAPE:
+		return {'exit': true}
+	return {}
+
+func process_action(_action: Dictionary) -> void:
 
 	# TODO(rivten): right now at each input that does something,
 	# we do the player turn and then immediatly the monster's turn
@@ -232,9 +266,9 @@ func do_input_key(scancode: int) -> void:
 	# could launch a thread or something ?
 	# Or maybe just make this code simpler.
 	var commands = []
-	if action.has('move') and game_state == GameState.PLAYER_TURN:
-		var dx = action.move.x
-		var dy = action.move.y
+	if _action.has('move') and game_state == GameState.PLAYER_TURN:
+		var dx = _action.move.x
+		var dy = _action.move.y
 		# NOTE(rivten): assert ? can we have (0, 0) ?
 		if dx != 0 or dy != 0:
 			var dest_x = player.pos.x + dx
@@ -249,7 +283,7 @@ func do_input_key(scancode: int) -> void:
 				update_fov()
 				game_state = GameState.ENEMY_TURN
 
-	if action.has('pickup') and game_state == GameState.PLAYER_TURN:
+	if _action.has('pickup') and game_state == GameState.PLAYER_TURN:
 		var entity_found = null
 		for entity in entities:
 			if entity.item and entity.pos.x == player.pos.x and entity.pos.y == player.pos.y:
@@ -264,33 +298,55 @@ func do_input_key(scancode: int) -> void:
 			msg.color = Color.yellow
 			push_log_message(msg)
 
-	if action.has('show_inventory') and action.show_inventory:
-		prev_game_state_before_inventory = game_state
+	if _action.has('show_inventory') and _action.show_inventory:
+		prev_game_state = game_state
 		game_state = GameState.SHOW_INVENTORY
 		update_inventory_ui()
 		$inventory_container.visible = true
 
-	if action.has('drop_inventory') and action.drop_inventory:
-		prev_game_state_before_inventory = game_state
+	if _action.has('drop_inventory') and _action.drop_inventory:
+		prev_game_state = game_state
 		game_state = GameState.DROP_INVENTORY
 		update_inventory_ui()
 		$inventory_container.visible = true
 
-	if action.has('use_inventory_index') and prev_game_state_before_inventory != GameState.PLAYER_DEAD:
-		if action.use_inventory_index < player.inventory.items.size():
+	if _action.has('use_inventory_index') and prev_game_state != GameState.PLAYER_DEAD:
+		if _action.use_inventory_index < player.inventory.items.size():
 			if game_state == GameState.SHOW_INVENTORY:
-				commands += Inventory.use_item(player.inventory, action.use_inventory_index, {'entity': player})
+				# TODO(rivten): ABSOLUTELY NOT fan of passing everything every time !!
+				# (but maybe it's not that costly performance-wise. It's just bad
+				# architecturally-wise)
+				commands += Inventory.use_item(player.inventory, _action.use_inventory_index,
+						{
+							'entity': player,
+							'caster': player,
+							'entities': entities,
+							'map': $viewport_container/viewport/map
+						})
 			elif game_state == GameState.DROP_INVENTORY:
-				commands += Inventory.drop_item(player.inventory, action.use_inventory_index, player.pos)
+				commands += Inventory.drop_item(player.inventory, _action.use_inventory_index, player.pos)
 
+	if game_state == GameState.TARGETING:
+		if _action.has('left_click'):
+			commands += Inventory.use_item(player.inventory, targeting_item_index,
+					{
+						'target_pos': _action.left_click,
+						'entities': entities,
+						'map': $viewport_container/viewport/map
+					})
+		elif _action.has('right_click'):
+			commands.push_back({'targeting_cancelled': true})
 
-	if action.has('exit'):
+	if _action.has('exit'):
 		if game_state == GameState.SHOW_INVENTORY or game_state == GameState.DROP_INVENTORY:
 			$inventory_container.visible = false
-			game_state = prev_game_state_before_inventory
+			game_state = prev_game_state
+		elif game_state == GameState.TARGETING:
+			commands.push_back({'targeting_cancelled': true})
 		else:
 			get_tree().quit()
 
+	# NOTE(rivten): dealing with the received commands for the turn
 	for command in commands:
 		if command.has("dead_entity"):
 			var dead_entity = command.dead_entity
@@ -330,11 +386,28 @@ func do_input_key(scancode: int) -> void:
 			game_state = GameState.ENEMY_TURN
 			$inventory_container.visible = false
 
+		if command.has("targeting_item"):
+			prev_game_state = GameState.PLAYER_TURN # TODO(rivten): this is a hack since we don't _really_ set the _real_ prev game state here
+			game_state = GameState.TARGETING
+			$inventory_container.visible = false
+
+			var targeting_item = command.targeting_item
+			targeting_item_index = command.targeting_item_index
+			push_log_message(targeting_item.item.targeting_message)
+
+		if command.has("targeting_cancelled"):
+			assert(game_state == GameState.TARGETING)
+			game_state = prev_game_state
+			var msg = LogMessage.new()
+			msg.text = "Targeting canceled"
+			msg.color = Color.white
+			push_log_message(msg)
+
 	if game_state == GameState.ENEMY_TURN:
 		for entity in entities:
 			if entity != player:
 				if entity.take_turn:
-					var enemy_commands = entity.take_turn.call_func(entity, player, $viewport_container/viewport/map, funcref(self, "is_position_free"))
+					var enemy_commands = entity.take_turn.call_func(entity, player, $viewport_container/viewport/map, funcref(self, "is_position_free"), entity.ai_state)
 
 					for command in enemy_commands:
 						if command.has("dead_entity"):
@@ -450,10 +523,37 @@ func place_entities(rooms: Array) -> void:
 					can_spawn_here = false
 					break
 			if can_spawn_here:
-				var item = add_entity("healing potion", potion_tileset_pos, Vector2(x, y), false, Color.purple)
-				item.item = Item.new()
-				item.item.use_function = funcref(ItemFunctions, "heal")
-				item.item.params.amount = 4
+				var spawn_rand = (randi() % 100)
+				if  spawn_rand < 70:
+					var potion = add_entity("healing potion", potion_tileset_pos, Vector2(x, y), false, Color.purple)
+					potion.item = Item.new()
+					potion.item.use_function = funcref(ItemFunctions, "heal")
+					potion.item.params.amount = 4
+				elif spawn_rand < 85:
+					var scroll = add_entity("lightning scroll", scroll_tileset_pos, Vector2(x, y), false, Color.black)
+					scroll.item = Item.new()
+					scroll.item.use_function = funcref(ItemFunctions, "cast_lightning")
+					scroll.item.params.damage = 8
+					scroll.item.params.max_range = 6
+				elif spawn_rand < 90:
+					var scroll = add_entity("fireball scroll", scroll_tileset_pos, Vector2(x, y), false, Color.red)
+					scroll.item = Item.new()
+					scroll.item.use_function = funcref(ItemFunctions, "cast_fireball")
+					scroll.item.params.damage = 20
+					scroll.item.params.radius = 3
+					scroll.item.targeting = true
+					scroll.item.targeting_message = LogMessage.new()
+					scroll.item.targeting_message.text = "Click to target the fireball"
+					scroll.item.targeting_message.color = Color.cyan
+				else:
+					var scroll = add_entity("confusion scroll", scroll_tileset_pos, Vector2(x, y), false, Color.pink)
+					scroll.item = Item.new()
+					scroll.item.use_function = funcref(ItemFunctions, "cast_confuse")
+					scroll.item.targeting = true
+					scroll.item.targeting_message = LogMessage.new()
+					scroll.item.targeting_message.text = "Click to target the confusion spell"
+					scroll.item.targeting_message.color = Color.cyan
+
 
 static func get_blocking_entity_at_location(_entities: Array, _dest_x: int, _dest_y: int) -> Entity:
 	# TODO(rivten): @optim

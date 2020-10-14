@@ -17,6 +17,7 @@ var item: Item
 
 # NOTE(rivten): other possibility : attach a script containing the needed functions
 var take_turn: FuncRef
+var ai_state: Dictionary
 
 # TODO(rivten): should we assert that the vector is not 0 ?
 static func move(_entity: Entity, _dx: int, _dy: int) -> void:
@@ -40,6 +41,9 @@ static func move_towards(_entity: Entity, _target_pos: Vector2, can_move_at_pos:
 
 static func distance_sqr(_entity_a: Entity, _entity_b: Entity) -> int:
 	return int((_entity_b.pos - _entity_a.pos).length_squared())
+
+static func distance_sqr_to_point(_entity: Entity, _point: Vector2) -> int:
+	return int((_entity.pos - _point).length_squared())
 
 func get_name() -> String:
 	return name

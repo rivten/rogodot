@@ -1,7 +1,7 @@
 class_name Ai
 
-# TODO(rivten): should the AI know about the map ?? maybe...
-static func basic_monster_take_turn(_entity: Entity, _target: Entity, _game_map: GameMap, can_move_at_pos: FuncRef) -> Array:
+# NOTE(rivten): state has nothing
+static func basic_monster_take_turn(_entity: Entity, _target: Entity, _game_map: GameMap, can_move_at_pos: FuncRef, _state: Dictionary) -> Array:
 	var commands = []
 	if GameMap.is_position_visible(_game_map, _entity.pos):
 		if Entity.distance_sqr(_entity, _target) >= 4:
@@ -24,4 +24,21 @@ static func basic_monster_take_turn(_entity: Entity, _target: Entity, _game_map:
 
 	return commands
 
-
+# NOTE(rivten): state has previous take_turn (FuncRef) and turn_count
+static func confused_monster_take_turn(_entity: Entity, _target: Entity, _game_map: GameMap, can_move_at_pos: FuncRef, _state: Dictionary) -> Array:
+	var commands = []
+	if _state.turn_count > 0:
+		var rand_x = _entity.pos.x + (randi() % 3) - 1
+		var rand_y = _entity.pos.y + (randi() % 3) - 1
+		if rand_x != _entity.pos.x or rand_y != _entity.pos.y:
+			Entity.move_towards(_entity, Vector2(rand_x, rand_y), can_move_at_pos)
+		_state.turn_count -= 1
+	else:
+		# TODO(hugo): should we have a system of a "stack" of ai behaviors ?
+		# maybe this ends up being a ai tree ...
+		_entity.take_turn = _state.previous_take_turn
+		var msg = LogMessage.new()
+		msg.text = "The " + _entity.name + " is no longer confused"
+		msg.color = Color.red
+		commands.push_back({'message': msg})
+	return commands
